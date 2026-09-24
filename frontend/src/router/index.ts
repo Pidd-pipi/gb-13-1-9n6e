@@ -69,6 +69,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/my-reservations',
+    name: 'MyReservations',
+    component: () => import('@/pages/MyReservations.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/favorites',
     name: 'Favorites',
     component: () => import('@/pages/Favorites.vue'),

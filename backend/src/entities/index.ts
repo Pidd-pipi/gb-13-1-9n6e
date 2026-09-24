@@ -5,8 +5,9 @@ import { Review } from './Review';
 import { Favorite } from './Favorite';
 import { PurchaseRequest } from './PurchaseRequest';
 import { BrowsingHistory } from './BrowsingHistory';
+import { Reservation, ACTIVE_RESERVATION_STATUSES } from './Reservation';
 
-export const entities = [User, Book, Message, Review, Favorite, PurchaseRequest, BrowsingHistory];
+export const entities = [User, Book, Message, Review, Favorite, PurchaseRequest, BrowsingHistory, Reservation];
 
 export * from './User';
 export { Book };
@@ -17,3 +18,5 @@ export * from './Favorite';
 export { PurchaseRequest };
 export type { RequestStatus, SubjectCategory as PurchaseRequestSubjectCategory } from './PurchaseRequest';
 export * from './BrowsingHistory';
+export { Reservation, ACTIVE_RESERVATION_STATUSES };
+export type { ReservationStatus, CancelledBy } from './Reservation';

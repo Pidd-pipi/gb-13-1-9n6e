@@ -32,6 +32,26 @@ export interface Book {
   status: BookStatus;
   sellerId: string;
   seller?: User;
+  reservation?: Reservation | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ReservationStatus = 'awaiting_location' | 'awaiting_handover' | 'completed' | 'cancelled';
+
+export interface Reservation {
+  id: string;
+  pickupSlot: string;
+  meetLocation?: string | null;
+  pickupCode?: string;
+  status: ReservationStatus;
+  cancelledBy?: 'buyer' | 'seller' | null;
+  bookId: string;
+  buyerId: string;
+  sellerId: string;
+  book?: Book;
+  buyer?: User;
+  seller?: User;
   createdAt: string;
   updatedAt: string;
 }
@@ -105,4 +125,11 @@ export const categoryMap: Record<SubjectCategory, string> = {
   business: '经管',
   arts: '艺术',
   other: '其他',
+};
+
+export const reservationStatusMap: Record<ReservationStatus, string> = {
+  awaiting_location: '待卖家确认地点',
+  awaiting_handover: '待到店交接',
+  completed: '已完成',
+  cancelled: '已取消',
 };

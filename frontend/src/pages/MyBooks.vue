@@ -47,15 +47,13 @@ const fetchBooks = async () => {
 
 const getStatusActions = (book: Book) => {
   const actions: any[] = [{ text: '查看详情', value: 'view' }];
-  
+
   if (book.status === 'available') {
-    actions.push({ text: '标记为已预约', value: 'reserved' });
     actions.push({ text: '标记为已售出', value: 'sold' });
   } else if (book.status === 'reserved') {
-    actions.push({ text: '恢复可购买', value: 'available' });
-    actions.push({ text: '标记为已售出', value: 'sold' });
+    actions.push({ text: '处理预约交接', value: 'handle-reservation' });
   }
-  
+
   actions.push({ text: '删除', value: 'delete' });
   return actions;
 };
@@ -63,6 +61,11 @@ const getStatusActions = (book: Book) => {
 const handleAction = async (book: Book, value: string) => {
   if (value === 'view') {
     router.push(`/book/${book.id}`);
+    return;
+  }
+
+  if (value === 'handle-reservation') {
+    router.push('/my-reservations?role=seller');
     return;
   }
   

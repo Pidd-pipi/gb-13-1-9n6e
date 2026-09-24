@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, Up
 import { User } from './User';
 import { Favorite } from './Favorite';
 import { Message } from './Message';
+import { Reservation } from './Reservation';
 
 export type BookCondition = 'new' | 'like_new' | 'good' | 'fair';
 export type BookStatus = 'available' | 'reserved' | 'sold';
@@ -66,6 +67,9 @@ export class Book {
 
   @OneToMany(() => Message, message => message.book)
   messages: Message[];
+
+  @OneToMany(() => Reservation, reservation => reservation.book)
+  reservations: Reservation[];
 
   @CreateDateColumn()
   @Index('idx_book_created')

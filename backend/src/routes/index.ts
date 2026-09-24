@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { authMiddleware } from '../middlewares/auth.middleware';
+import { authMiddleware, optionalAuthMiddleware } from '../middlewares/auth.middleware';
 import { sendVerificationCode, register, login, authValidators } from '../controllers/auth.controller';
 import { getCurrentUser, updateProfile, uploadAvatar, getUserReviews } from '../controllers/user.controller';
 import {
@@ -21,6 +21,14 @@ import {
 } from '../controllers/purchaseRequest.controller';
 import { sendMessage, getConversations, getMessages, getUnreadCount } from '../controllers/message.controller';
 import { createReview, getUserReviews as getUserReviewsPublic } from '../controllers/review.controller';
+import {
+  createReservation,
+  getMyReservations,
+  getBookReservation,
+  confirmMeetLocation,
+  cancelReservation,
+  verifyPickupCode,
+} from '../controllers/reservation.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -34,8 +42,8 @@ router.put('/user/profile', authMiddleware, updateProfile);
 router.post('/user/avatar', authMiddleware, upload.single('avatar'), uploadAvatar);
 router.get('/user/reviews', authMiddleware, getUserReviews);
 
-router.get('/books', getBooks);
-router.get('/books/:id', getBookById);
+router.get('/books', optionalAuthMiddleware, getBooks);
+router.get('/books/:id', optionalAuthMiddleware, getBookById);
 router.post('/books', authMiddleware, upload.array('images', 5), createBook);
 router.put('/books/:id/status', authMiddleware, updateBookStatus);
 router.delete('/books/:id', authMiddleware, deleteBook);
@@ -60,5 +68,13 @@ router.post('/reviews', authMiddleware, createReview);
 router.get('/reviews/user/:userId', (req, res) => {
   void getUserReviewsPublic(req, res);
 });
+
+// 预约交接
+router.post('/reservations', authMiddleware, createReservation);
+router.get('/my/reservations', authMiddleware, getMyReservations);
+router.get('/books/:bookId/reservation', authMiddleware, getBookReservation);
+router.put('/reservations/:id/location', authMiddleware, confirmMeetLocation);
+router.put('/reservations/:id/cancel', authMiddleware, cancelReservation);
+router.put('/reservations/:id/verify', authMiddleware, verifyPickupCode);
 
 export default router;

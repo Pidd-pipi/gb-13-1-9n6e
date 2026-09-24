@@ -7,6 +7,7 @@ import { Favorite } from '../entities/Favorite';
 import { BrowsingHistory } from '../entities/BrowsingHistory';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { minioService } from '../services/minio.service';
+import { hasActiveReservation, findRelatedActiveReservation } from '../services/reservation.service';
 
 export const createBook = async (req: AuthenticatedRequest, res: Response) => {
   const {
@@ -160,7 +161,10 @@ export const getBookById = async (req: Request, res: Response) => {
     await historyRepository.save(history);
   }
 
-  res.json(book);
+  // 当前用户与该书的待交接预约（买家可见取书码，卖家可见买家联系方式）
+  const reservation = await findRelatedActiveReservation(book.id, userId);
+
+  res.json({ ...book, reservation });
 };
 
 export const updateBookStatus = async (req: AuthenticatedRequest, res: Response) => {
@@ -176,6 +180,19 @@ export const updateBookStatus = async (req: AuthenticatedRequest, res: Response)
 
   if (book.sellerId !== req.userId) {
     return res.status(403).json({ message: '无权限操作' });
+  }
+
+  if (!['available', 'reserved', 'sold'].includes(status)) {
+    return res.status(400).json({ message: '无效的书籍状态' });
+  }
+
+  // 存在待交接预约时，状态只能随预约流程流转（取消恢复可购买 / 校验取书码标记已售出）
+  const reserved = await hasActiveReservation(book.id);
+  if (reserved) {
+    return res.status(400).json({ message: '该书有进行中的预约，请在“我的预约”中处理交接或取消预约' });
+  }
+  if (status === 'reserved') {
+    return res.status(400).json({ message: '请由买家在书籍详情提交预约' });
   }
 
   book.status = status;
@@ -196,6 +213,11 @@ export const deleteBook = async (req: AuthenticatedRequest, res: Response) => {
 
   if (book.sellerId !== req.userId) {
     return res.status(403).json({ message: '无权限操作' });
+  }
+
+  const reserved = await hasActiveReservation(book.id);
+  if (reserved) {
+    return res.status(400).json({ message: '该书有进行中的预约，请先在“我的预约”中取消预约后再删除' });
   }
 
   await bookRepository.delete({ id });

@@ -4,6 +4,7 @@ import { Message } from './Message';
 import { Review } from './Review';
 import { Favorite } from './Favorite';
 import { PurchaseRequest } from './PurchaseRequest';
+import { Reservation } from './Reservation';
 
 export type UserRole = 'student' | 'admin';
 
@@ -68,6 +69,12 @@ export class User {
 
   @OneToMany(() => PurchaseRequest, request => request.requester)
   purchaseRequests: PurchaseRequest[];
+
+  @OneToMany(() => Reservation, reservation => reservation.buyer)
+  buyerReservations: Reservation[];
+
+  @OneToMany(() => Reservation, reservation => reservation.seller)
+  sellerReservations: Reservation[];
 
   @CreateDateColumn()
   createdAt: Date;

@@ -23,3 +23,17 @@ export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: N
     return res.status(401).json({ message: '无效的token' });
   }
 };
+
+// 携带有效 token 时附加 userId，未登录也放行（用于书籍详情等游客可访问的接口）
+export const optionalAuthMiddleware = (req: AuthenticatedRequest, _res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    try {
+      const decoded = jwt.verify(authHeader.split(' ')[1], config.jwt.secret) as { userId: string };
+      req.userId = decoded.userId;
+    } catch {
+      // 忽略无效 token，按游客处理
+    }
+  }
+  next();
+};
