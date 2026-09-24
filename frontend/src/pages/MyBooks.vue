@@ -1,23 +1,34 @@
 <template>
   <div class="page-container">
     <van-nav-bar title="我发布的" left-arrow @click-left="router.back" />
-    
+
     <van-loading v-if="loading" class="loading-center" />
-    
+
     <div v-else-if="books.length > 0" class="books-list">
       <div v-for="book in books" :key="book.id" class="book-item">
-        <van-image :src="book.images[0]" width="80" height="80" fit="cover" />
+        <van-image :src="book.images[0]" width="80" height="80" fit="cover" @click="goDetail(book.id)" />
         <div class="book-info">
-          <div class="book-title">{{ book.title }}</div>
+          <div class="book-title" @click="goDetail(book.id)">{{ book.title }}</div>
           <div class="book-price">¥{{ book.price }}</div>
-          <div class="book-status" :class="`status-${book.status}`">{{ statusMap[book.status] }}</div>
+          <div class="book-meta">
+            <span class="book-status" :class="`status-${book.status}`">{{ statusMap[book.status] }}</span>
+            <van-button
+              v-if="book.reservation && book.reservation.status !== 'completed'"
+              size="mini"
+              type="primary"
+              plain
+              @click="goReservations"
+            >
+              {{ book.reservation.status === 'pending' ? '待确认地点' : '待校验取书码' }}
+            </van-button>
+          </div>
         </div>
         <van-dropdown-menu class="book-actions">
           <van-dropdown-item :options="getStatusActions(book)" @change="(val: any) => handleAction(book, val)" />
         </van-dropdown-menu>
       </div>
     </div>
-    
+
     <van-empty v-else description="暂无发布的书籍">
       <van-button type="primary" @click="router.push('/publish')">去发布</van-button>
     </van-empty>
@@ -45,17 +56,24 @@ const fetchBooks = async () => {
   }
 };
 
+const goDetail = (id: string) => {
+  router.push(`/book/${id}`);
+};
+
+const goReservations = () => {
+  router.push({ path: '/my-reservations', query: { tab: 'seller' } });
+};
+
 const getStatusActions = (book: Book) => {
   const actions: any[] = [{ text: '查看详情', value: 'view' }];
-  
-  if (book.status === 'available') {
-    actions.push({ text: '标记为已预约', value: 'reserved' });
-    actions.push({ text: '标记为已售出', value: 'sold' });
-  } else if (book.status === 'reserved') {
-    actions.push({ text: '恢复可购买', value: 'available' });
-    actions.push({ text: '标记为已售出', value: 'sold' });
+
+  // 有进行中的预约时，状态由「我的预约」流程驱动（后端也会拦截手动修改）
+  if (!book.reservation || book.reservation.status === 'completed') {
+    if (book.status === 'available') {
+      actions.push({ text: '标记为已售出', value: 'sold' });
+    }
   }
-  
+
   actions.push({ text: '删除', value: 'delete' });
   return actions;
 };
@@ -65,7 +83,7 @@ const handleAction = async (book: Book, value: string) => {
     router.push(`/book/${book.id}`);
     return;
   }
-  
+
   if (value === 'delete') {
     try {
       await showConfirmDialog({
@@ -78,7 +96,7 @@ const handleAction = async (book: Book, value: string) => {
     } catch {}
     return;
   }
-  
+
   try {
     await updateBookStatus(book.id, value as BookStatus);
     showToast('状态已更新');
@@ -123,9 +141,14 @@ onMounted(fetchBooks);
   color: #ff4d4f;
   margin-top: 4px;
 }
+.book-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
 .book-status {
   font-size: 12px;
-  margin-top: 4px;
 }
 .status-available {
   color: #52c41a;

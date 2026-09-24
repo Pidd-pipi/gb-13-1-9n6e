@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { authMiddleware } from '../middlewares/auth.middleware';
+import { authMiddleware, optionalAuthMiddleware } from '../middlewares/auth.middleware';
 import { sendVerificationCode, register, login, authValidators } from '../controllers/auth.controller';
 import { getCurrentUser, updateProfile, uploadAvatar, getUserReviews } from '../controllers/user.controller';
 import {
@@ -21,6 +21,13 @@ import {
 } from '../controllers/purchaseRequest.controller';
 import { sendMessage, getConversations, getMessages, getUnreadCount } from '../controllers/message.controller';
 import { createReview, getUserReviews as getUserReviewsPublic } from '../controllers/review.controller';
+import {
+  createReservation,
+  getMyReservations,
+  confirmLocation,
+  cancelReservation,
+  verifyPickupCode,
+} from '../controllers/reservation.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -35,12 +42,18 @@ router.post('/user/avatar', authMiddleware, upload.single('avatar'), uploadAvata
 router.get('/user/reviews', authMiddleware, getUserReviews);
 
 router.get('/books', getBooks);
-router.get('/books/:id', getBookById);
+router.get('/books/:id', optionalAuthMiddleware, getBookById);
 router.post('/books', authMiddleware, upload.array('images', 5), createBook);
 router.put('/books/:id/status', authMiddleware, updateBookStatus);
 router.delete('/books/:id', authMiddleware, deleteBook);
 router.get('/my/books', authMiddleware, getMyBooks);
 router.get('/recommend/books', authMiddleware, getRecommendBooks);
+
+router.post('/reservations', authMiddleware, createReservation);
+router.get('/my/reservations', authMiddleware, getMyReservations);
+router.put('/reservations/:id/location', authMiddleware, confirmLocation);
+router.put('/reservations/:id/cancel', authMiddleware, cancelReservation);
+router.put('/reservations/:id/verify-code', authMiddleware, verifyPickupCode);
 
 router.post('/favorites/toggle', authMiddleware, toggleFavorite);
 router.get('/favorites', authMiddleware, getFavorites);

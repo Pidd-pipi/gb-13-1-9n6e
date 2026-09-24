@@ -5,8 +5,14 @@ import { Book, BookStatus, SubjectCategory, BookCondition } from '../entities/Bo
 import { User } from '../entities/User';
 import { Favorite } from '../entities/Favorite';
 import { BrowsingHistory } from '../entities/BrowsingHistory';
+import { Reservation } from '../entities/Reservation';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { minioService } from '../services/minio.service';
+import {
+  findReservationByBookId,
+  serializeReservation,
+  getFullReservationById,
+} from './reservation.controller';
 
 export const createBook = async (req: AuthenticatedRequest, res: Response) => {
   const {
@@ -160,12 +166,29 @@ export const getBookById = async (req: Request, res: Response) => {
     await historyRepository.save(history);
   }
 
-  res.json(book);
+  // 买卖双方在详情页看到自己参与的预约（取书码/联系方式按角色脱敏）
+  let reservation: ReturnType<typeof serializeReservation> | undefined;
+  if (userId) {
+    const isSeller = userId === book.sellerId;
+    const entity = await findReservationByBookId(book.id, !isSeller);
+    if (entity && (entity.buyerId === userId || entity.sellerId === userId)) {
+      const withRelations = await getFullReservationById(entity.id, !isSeller);
+      if (withRelations) {
+        reservation = serializeReservation(withRelations, userId);
+      }
+    }
+  }
+
+  res.json({ ...book, reservation });
 };
 
 export const updateBookStatus = async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { status } = req.body;
+
+  if (!['available', 'reserved', 'sold'].includes(status)) {
+    return res.status(400).json({ message: '无效的书籍状态' });
+  }
 
   const bookRepository = AppDataSource.getRepository(Book);
   const book = await bookRepository.findOne({ where: { id } });
@@ -178,7 +201,18 @@ export const updateBookStatus = async (req: AuthenticatedRequest, res: Response)
     return res.status(403).json({ message: '无权限操作' });
   }
 
-  book.status = status;
+  // 存在待交接预约时，状态由预约流程驱动，避免卖家忘记在「我的预约」处理
+  const activeReservation = await findReservationByBookId(id);
+  if (activeReservation && activeReservation.status !== 'completed') {
+    if (status === 'available') {
+      return res.status(400).json({ message: '该书有进行中的预约，请先在「我的预约」中取消' });
+    }
+    if (status === 'sold') {
+      return res.status(400).json({ message: '请在「我的预约」中校验取书码完成出售' });
+    }
+  }
+
+  book.status = status as BookStatus;
   await bookRepository.save(book);
 
   res.json({ message: '状态更新成功', book });
@@ -198,6 +232,15 @@ export const deleteBook = async (req: AuthenticatedRequest, res: Response) => {
     return res.status(403).json({ message: '无权限操作' });
   }
 
+  // 有待交接预约的书籍需先取消预约，防止买家预约后书籍被悄悄删除
+  const activeReservation = await findReservationByBookId(id);
+  if (activeReservation && activeReservation.status !== 'completed') {
+    return res.status(400).json({ message: '该书有进行中的预约，请先在「我的预约」中取消再删除' });
+  }
+  if (activeReservation) {
+    await AppDataSource.getRepository(Reservation).delete({ bookId: id });
+  }
+
   await bookRepository.delete({ id });
   res.json({ message: '删除成功' });
 };
@@ -209,7 +252,27 @@ export const getMyBooks = async (req: AuthenticatedRequest, res: Response) => {
     order: { createdAt: 'DESC' },
   });
 
-  res.json(books);
+  // 附带每本书的预约概要，方便卖家在「我发布的」里进入预约处理
+  const reservationRepository = AppDataSource.getRepository(Reservation);
+  const reservations = await reservationRepository
+    .createQueryBuilder('reservation')
+    .leftJoinAndSelect('reservation.buyer', 'buyer')
+    .where('reservation.sellerId = :sellerId', { sellerId: req.userId })
+    .getMany();
+  const reservationMap = new Map(reservations.map((r) => [r.bookId, r]));
+
+  const result = books.map((book) => ({
+    ...book,
+    reservation: reservationMap.has(book.id)
+      ? {
+          id: reservationMap.get(book.id)!.id,
+          status: reservationMap.get(book.id)!.status,
+          buyerName: reservationMap.get(book.id)!.buyer?.name || '未设置昵称',
+        }
+      : undefined,
+  }));
+
+  res.json(result);
 };
 
 export const getRecommendBooks = async (req: AuthenticatedRequest, res: Response) => {

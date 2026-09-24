@@ -16,6 +16,45 @@ export type BookStatus = 'available' | 'reserved' | 'sold';
 export type TradeMethod = 'meetup' | 'shipping';
 export type SubjectCategory = 'science' | 'humanities' | 'business' | 'arts' | 'other';
 
+export type ReservationStatus = 'pending' | 'confirmed' | 'completed';
+
+export interface ReservationBuyer {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  department?: string;
+  contactInfo?: string;
+}
+
+export interface ReservationBook {
+  id: string;
+  title: string;
+  price: number;
+  images: string[];
+  status: BookStatus;
+  campus: string;
+}
+
+export interface Reservation {
+  id: string;
+  bookId: string;
+  buyerId: string;
+  sellerId: string;
+  pickupSlot: string;
+  meetingLocation?: string;
+  status: ReservationStatus;
+  createdAt: string;
+  codeVisible: boolean;
+  pickupCode?: string;
+  buyer?: ReservationBuyer;
+  book?: ReservationBook;
+}
+
+export interface MyReservationsResponse {
+  asBuyer: Reservation[];
+  asSeller: Reservation[];
+}
+
 export interface Book {
   id: string;
   title: string;
@@ -32,9 +71,15 @@ export interface Book {
   status: BookStatus;
   sellerId: string;
   seller?: User;
+  reservation?: Reservation;
   createdAt: string;
   updatedAt: string;
 }
+
+/** 「我发布的」列表中每本书附带的预约概要 */
+export type MyBookReservationSummary = Pick<Reservation, 'id' | 'status'> & {
+  buyerName?: string;
+};
 
 export interface Message {
   id: string;
@@ -92,6 +137,12 @@ export const statusMap: Record<BookStatus, string> = {
   available: '可购买',
   reserved: '已预约',
   sold: '已售出',
+};
+
+export const reservationStatusMap: Record<ReservationStatus, string> = {
+  pending: '待确认地点',
+  confirmed: '待交接',
+  completed: '已完成',
 };
 
 export const tradeMethodMap: Record<TradeMethod, string> = {
